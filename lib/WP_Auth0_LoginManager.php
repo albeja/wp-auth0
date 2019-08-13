@@ -601,11 +601,13 @@ class WP_Auth0_LoginManager {
 
 		// State parameter, checked during login callback.
 		if ( empty( $filtered_params['state'] ) ) {
-			$state                    = [
+			$state = [
 				'interim'     => false,
 				'nonce'       => WP_Auth0_State_Handler::get_instance()->get_unique(),
 				'redirect_to' => filter_var( $redirect_to, FILTER_SANITIZE_URL ),
+				'max_age'     => ! empty( $filtered_params['max_age'] ) ? absint( $filtered_params['max_age'] ) : null,
 			];
+
 			$filtered_state           = apply_filters( 'auth0_authorize_state', $state, $filtered_params );
 			$filtered_params['state'] = base64_encode( json_encode( $filtered_state ) );
 		}
