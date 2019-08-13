@@ -695,13 +695,11 @@ class WP_Auth0_LoginManager {
 	 * @codeCoverageIgnore - Private method
 	 */
 	private function clean_id_token( $id_token_obj ) {
-		foreach ( [ 'iss', 'aud', 'iat', 'exp', 'nonce' ] as $attr ) {
+		foreach ( [ 'iss', 'aud', 'azp', 'iat', 'exp', 'nonce' ] as $attr ) {
 			unset( $id_token_obj->$attr );
 		}
 		if ( ! isset( $id_token_obj->user_id ) && isset( $id_token_obj->sub ) ) {
 			$id_token_obj->user_id = $id_token_obj->sub;
-		} elseif ( ! isset( $id_token_obj->sub ) && isset( $id_token_obj->user_id ) ) {
-			$id_token_obj->sub = $id_token_obj->user_id;
 		}
 		return $id_token_obj;
 	}

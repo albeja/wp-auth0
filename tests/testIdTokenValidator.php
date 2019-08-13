@@ -71,9 +71,9 @@ class TestIdTokenValidator extends WP_Auth0_Test_Case {
 	}
 
 	/**
-	 * Test that a missing issuer in the token fails validation.
+	 * Test that a missing sub in the token fails validation.
 	 */
-	public function testThatJwtDecodeFailsWithMissingIss() {
+	public function testThatJwtDecodeFailsWithMissingSub() {
 		self::$opts->set( 'client_secret', '__test_valid_secret__' );
 		self::$opts->set( 'client_signing_algorithm', 'HS256' );
 
@@ -84,7 +84,27 @@ class TestIdTokenValidator extends WP_Auth0_Test_Case {
 			$caught_redirect = false;
 			$decoder->decode();
 		} catch ( WP_Auth0_InvalidIdTokenException $e ) {
-			$caught_redirect = ( 'Invalid token issuer' === $e->getMessage() );
+			$caught_redirect = ( 'Missing token sub' === $e->getMessage() );
+		}
+
+		$this->assertTrue( $caught_redirect );
+	}
+
+	/**
+	 * Test that a missing issuer in the token fails validation.
+	 */
+	public function testThatJwtDecodeFailsWithMissingIss() {
+		self::$opts->set( 'client_secret', '__test_valid_secret__' );
+		self::$opts->set( 'client_signing_algorithm', 'HS256' );
+
+		$id_token = JWT::encode( [ 'sub' => uniqid() ], '__test_valid_secret__', 'HS256' );
+		$decoder  = new WP_Auth0_Id_Token_Validator( $id_token, self::$opts );
+
+		try {
+			$caught_redirect = false;
+			$decoder->decode();
+		} catch ( WP_Auth0_InvalidIdTokenException $e ) {
+			$caught_redirect = ( 'Invalid token iss' === $e->getMessage() );
 		}
 
 		$this->assertTrue( $caught_redirect );
@@ -98,14 +118,21 @@ class TestIdTokenValidator extends WP_Auth0_Test_Case {
 		self::$opts->set( 'client_signing_algorithm', 'HS256' );
 		self::$opts->set( 'domain', 'valid.auth0.com' );
 
-		$id_token = JWT::encode( [ 'iss' => 'https://invalid.auth0.com/' ], '__test_valid_secret__', 'HS256' );
+		$id_token = JWT::encode(
+			[
+				'iss' => 'https://invalid.auth0.com/',
+				'sub' => uniqid(),
+			],
+			'__test_valid_secret__',
+			'HS256'
+		);
 		$decoder  = new WP_Auth0_Id_Token_Validator( $id_token, self::$opts );
 
 		try {
 			$caught_redirect = false;
 			$decoder->decode();
 		} catch ( WP_Auth0_InvalidIdTokenException $e ) {
-			$caught_redirect = ( 'Invalid token issuer' === $e->getMessage() );
+			$caught_redirect = ( 'Invalid token iss' === $e->getMessage() );
 		}
 
 		$this->assertTrue( $caught_redirect );
@@ -119,14 +146,21 @@ class TestIdTokenValidator extends WP_Auth0_Test_Case {
 		self::$opts->set( 'client_signing_algorithm', 'HS256' );
 		self::$opts->set( 'domain', 'valid.auth0.com' );
 
-		$id_token = JWT::encode( [ 'iss' => 'https://valid.auth0.com/' ], '__test_valid_secret__', 'HS256' );
+		$id_token = JWT::encode(
+			[
+				'iss' => 'https://valid.auth0.com/',
+				'sub' => uniqid(),
+			],
+			'__test_valid_secret__',
+			'HS256'
+		);
 		$decoder  = new WP_Auth0_Id_Token_Validator( $id_token, self::$opts );
 
 		try {
 			$caught_redirect = false;
 			$decoder->decode();
 		} catch ( WP_Auth0_InvalidIdTokenException $e ) {
-			$caught_redirect = ( 'Invalid token audience' === $e->getMessage() );
+			$caught_redirect = ( 'Invalid token aud' === $e->getMessage() );
 		}
 
 		$this->assertTrue( $caught_redirect );
@@ -142,6 +176,7 @@ class TestIdTokenValidator extends WP_Auth0_Test_Case {
 		self::$opts->set( 'domain', 'valid.auth0.com' );
 
 		$id_token_payload = [
+			'sub' => uniqid(),
 			'iss' => 'https://valid.auth0.com/',
 			'aud' => '__invalid_audience__',
 		];
@@ -152,7 +187,7 @@ class TestIdTokenValidator extends WP_Auth0_Test_Case {
 			$caught_redirect = false;
 			$decoder->decode();
 		} catch ( WP_Auth0_InvalidIdTokenException $e ) {
-			$caught_redirect = ( 'Invalid token audience' === $e->getMessage() );
+			$caught_redirect = ( 'Invalid token aud' === $e->getMessage() );
 		}
 
 		$this->assertTrue( $caught_redirect );
@@ -168,6 +203,7 @@ class TestIdTokenValidator extends WP_Auth0_Test_Case {
 		self::$opts->set( 'domain', 'valid.auth0.com' );
 
 		$id_token_payload = [
+			'sub' => uniqid(),
 			'iss' => 'https://valid.auth0.com/',
 			'aud' => '__valid_audience__',
 		];
@@ -198,6 +234,7 @@ class TestIdTokenValidator extends WP_Auth0_Test_Case {
 		$_COOKIE['auth0_nonce'] = '__valid_nonce__';
 
 		$id_token_payload = [
+			'sub'   => uniqid(),
 			'iss'   => 'https://valid.auth0.com/',
 			'aud'   => '__valid_audience__',
 			'nonce' => '__invalid_nonce__',
@@ -218,6 +255,36 @@ class TestIdTokenValidator extends WP_Auth0_Test_Case {
 		$this->assertTrue( $caught_redirect );
 	}
 
+	public function testThatJwtDecodeFailsWithMultipleAudiencesAndNoAzp() {
+		self::$opts->set( 'client_id', '__valid_audience_1__' );
+		self::$opts->set( 'client_secret', '__test_valid_secret__' );
+		self::$opts->set( 'client_signing_algorithm', 'HS256' );
+		self::$opts->set( 'domain', 'valid.auth0.com' );
+		$_COOKIE['auth0_nonce'] = '__valid_nonce__';
+
+		$id_token_payload = [
+			'sub'   => uniqid(),
+			'iss'   => 'https://valid.auth0.com/',
+			'aud'   => [ '__valid_audience_1__', '__valid_audience_2__' ],
+			'nonce' => '__valid_nonce__',
+			'data'  => '__test_data__',
+		];
+		$id_token         = JWT::encode( $id_token_payload, '__test_valid_secret__', 'HS256' );
+		$decoder          = new WP_Auth0_Id_Token_Validator( $id_token, self::$opts );
+
+		try {
+			$caught_redirect = false;
+
+			// Suppress "Cannot modify header information" notice.
+			// phpcs:ignore
+			@$decoder->decode( true );
+		} catch ( WP_Auth0_InvalidIdTokenException $e ) {
+			$caught_redirect = ( 'Invalid token azp' === $e->getMessage() );
+		}
+
+		$this->assertTrue( $caught_redirect );
+	}
+
 	/**
 	 * Test that a token with multiple audiences succeeds.
 	 *
@@ -231,10 +298,12 @@ class TestIdTokenValidator extends WP_Auth0_Test_Case {
 		$_COOKIE['auth0_nonce'] = '__valid_nonce__';
 
 		$id_token_payload = [
+			'sub'   => uniqid(),
 			'iss'   => 'https://valid.auth0.com/',
 			'aud'   => [ '__valid_audience_1__', '__valid_audience_2__' ],
 			'nonce' => '__valid_nonce__',
 			'data'  => '__test_data__',
+			'azp'   => '__valid_audience_2__',
 		];
 		$id_token         = JWT::encode( $id_token_payload, '__test_valid_secret__', 'HS256' );
 		$decoder          = new WP_Auth0_Id_Token_Validator( $id_token, self::$opts );

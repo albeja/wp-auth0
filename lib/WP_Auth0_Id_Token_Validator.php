@@ -82,18 +82,27 @@ class WP_Auth0_Id_Token_Validator {
 			throw new WP_Auth0_InvalidIdTokenException( $e->getMessage() );
 		}
 
+		// Check if the token sub is present.
+		if ( empty( $payload->sub ) ) {
+			throw new WP_Auth0_InvalidIdTokenException( __( 'Missing token sub', 'wp-auth0' ) );
+		}
+
 		// Check if the token issuer is valid.
 		if ( ! isset( $payload->iss ) || $payload->iss !== $this->issuer ) {
-			throw new WP_Auth0_InvalidIdTokenException( __( 'Invalid token issuer', 'wp-auth0' ) );
+			throw new WP_Auth0_InvalidIdTokenException( __( 'Invalid token iss', 'wp-auth0' ) );
 		}
 
 		// Check if the token audience is valid.
-		$token_audience = null;
+		$aud_array = null;
 		if ( isset( $payload->aud ) ) {
-			$token_audience = is_array( $payload->aud ) ? $payload->aud : [ $payload->aud ];
+			$aud_array = is_array( $payload->aud ) ? $payload->aud : [ $payload->aud ];
 		}
-		if ( ! $token_audience || ! in_array( $this->audience, $token_audience ) ) {
-			throw new WP_Auth0_InvalidIdTokenException( __( 'Invalid token audience', 'wp-auth0' ) );
+		if ( ! $aud_array || ! in_array( $this->audience, $aud_array ) ) {
+			throw new WP_Auth0_InvalidIdTokenException( __( 'Invalid token aud', 'wp-auth0' ) );
+		}
+
+		if ( count( $aud_array ) > 1 && ( empty( $payload->azp ) || ! in_array( $payload->azp, $aud_array ) ) ) {
+			throw new WP_Auth0_InvalidIdTokenException( __( 'Invalid token azp', 'wp-auth0' ) );
 		}
 
 		// Check if the token nonce is valid.
