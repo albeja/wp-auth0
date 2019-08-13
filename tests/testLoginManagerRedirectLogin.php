@@ -271,7 +271,8 @@ class TestLoginManagerRedirectLogin extends WP_Auth0_Test_Case {
 		self::$opts->set( 'client_id', '__test_client_id__' );
 		self::$opts->set( 'client_secret', '__test_client_secret__' );
 		self::$opts->set( 'client_signing_algorithm', 'HS256' );
-		$_REQUEST['code'] = uniqid();
+		$_REQUEST['code']  = uniqid();
+		$_REQUEST['state'] = base64_encode( '{}' );
 
 		try {
 			$caught_exception = false;
@@ -299,7 +300,8 @@ class TestLoginManagerRedirectLogin extends WP_Auth0_Test_Case {
 		self::$opts->set( 'client_id', '__test_client_id__' );
 		self::$opts->set( 'client_secret', '__test_client_secret__' );
 		self::$opts->set( 'client_signing_algorithm', 'HS256' );
-		$_REQUEST['code'] = uniqid();
+		$_REQUEST['code']  = uniqid();
+		$_REQUEST['state'] = base64_encode( '{}' );
 
 		try {
 			$http_data = [];
@@ -329,7 +331,8 @@ class TestLoginManagerRedirectLogin extends WP_Auth0_Test_Case {
 		self::$opts->set( 'client_id', '__test_client_id__' );
 		self::$opts->set( 'client_secret', '__test_client_secret__' );
 		self::$opts->set( 'client_signing_algorithm', 'HS256' );
-		$_REQUEST['code'] = uniqid();
+		$_REQUEST['code']  = uniqid();
+		$_REQUEST['state'] = base64_encode( '{}' );
 
 		try {
 			$user_data = [];
@@ -362,7 +365,8 @@ class TestLoginManagerRedirectLogin extends WP_Auth0_Test_Case {
 		self::$opts->set( 'client_id', '__test_client_id__' );
 		self::$opts->set( 'client_secret', '__test_client_secret__' );
 		self::$opts->set( 'client_signing_algorithm', 'HS256' );
-		$_REQUEST['code'] = uniqid();
+		$_REQUEST['code']  = uniqid();
+		$_REQUEST['state'] = base64_encode( '{}' );
 
 		try {
 			$user_data = [];
@@ -393,7 +397,8 @@ class TestLoginManagerRedirectLogin extends WP_Auth0_Test_Case {
 		self::$opts->set( 'client_secret', '__test_client_secret__' );
 		self::$opts->set( 'client_signing_algorithm', 'HS256' );
 		add_filter( 'auth0_use_management_api_for_userinfo', '__return_false', 10 );
-		$_REQUEST['code'] = uniqid();
+		$_REQUEST['code']  = uniqid();
+		$_REQUEST['state'] = base64_encode( '{}' );
 
 		try {
 			$user_data = [];

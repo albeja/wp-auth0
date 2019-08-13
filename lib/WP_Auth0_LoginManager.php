@@ -230,9 +230,14 @@ class WP_Auth0_LoginManager {
 		$id_token      = $data->id_token;
 		$refresh_token = isset( $data->refresh_token ) ? $data->refresh_token : null;
 
+		// Validated above in $this->init_auth0().
+		$state_decoded = $this->get_state();
+		$max_age       = isset( $state_decoded->max_age ) ? absint( $state_decoded->max_age ) : null;
+
 		// Decode the incoming ID token for the Auth0 user.
+		// TODO: Do this in $this->init_auth0()
 		$jwt_verifier  = new WP_Auth0_Id_Token_Validator( $id_token, $this->a0_options );
-		$decoded_token = $jwt_verifier->decode();
+		$decoded_token = $jwt_verifier->decode( false, $max_age );
 
 		// Attempt to authenticate with the Management API, if allowed.
 		$userinfo = null;
@@ -254,7 +259,6 @@ class WP_Auth0_LoginManager {
 		}
 
 		if ( $this->login_user( $userinfo, $id_token, $access_token, $refresh_token ) ) {
-			$state_decoded = $this->get_state();
 			if ( ! empty( $state_decoded->interim ) ) {
 				include WPA0_PLUGIN_DIR . 'templates/login-interim.php';
 			} else {
@@ -289,15 +293,17 @@ class WP_Auth0_LoginManager {
 		$id_token_param = ! empty( $_POST['id_token'] ) ? $_POST['id_token'] : $_POST['token'];
 		$id_token       = sanitize_text_field( wp_unslash( $id_token_param ) );
 
+		// Validated above in $this->init_auth0().
+		$state_decoded = $this->get_state();
+		$max_age       = isset( $state_decoded->max_age ) ? absint( $state_decoded->max_age ) : null;
+
+		// Decode the incoming ID token for the Auth0 user.
+		// TODO: Do this in $this->init_auth0()
 		$jwt_verifier  = new WP_Auth0_Id_Token_Validator( $id_token, $this->a0_options );
-		$decoded_token = $jwt_verifier->decode( true );
+		$decoded_token = $jwt_verifier->decode( true, $max_age );
 		$decoded_token = $this->clean_id_token( $decoded_token );
 
 		if ( $this->login_user( $decoded_token, $id_token ) ) {
-
-			// Validated above in $this->init_auth0().
-			$state_decoded = $this->get_state();
-
 			if ( ! empty( $state_decoded->interim ) ) {
 				include WPA0_PLUGIN_DIR . 'templates/login-interim.php';
 			} else {
@@ -583,7 +589,7 @@ class WP_Auth0_LoginManager {
 		];
 
 		if ( $is_implicit ) {
-			$params['nonce'] = $nonce;
+			$params['nonce'] = WP_Auth0_Nonce_Handler::get_instance()->get_unique();
 		}
 
 		if ( ! empty( $connection ) ) {

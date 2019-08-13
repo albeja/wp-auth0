@@ -68,13 +68,14 @@ class WP_Auth0_Id_Token_Validator {
 	/**
 	 * Decodes a JWT string into a PHP object.
 	 *
-	 * @param bool $validate_nonce Validate the ID token nonce.
+	 * @param bool     $validate_nonce Validate the ID token nonce.
+	 * @param int|null $max_age Maximum age of the authentication request, passed to auth endpoint.
 	 *
 	 * @return object
 	 *
 	 * @throws WP_Auth0_InvalidIdTokenException Provided JWT was invalid.
 	 */
-	public function decode( $validate_nonce = false ) {
+	public function decode( $validate_nonce = false, $max_age = null ) {
 
 		try {
 			$payload = JWT::decode( $this->id_token, $this->key, [ $this->algorithm ] );
@@ -101,8 +102,14 @@ class WP_Auth0_Id_Token_Validator {
 			throw new WP_Auth0_InvalidIdTokenException( __( 'Invalid token aud', 'wp-auth0' ) );
 		}
 
+		// Check if the azp is valid if we have multiple audiences.
 		if ( count( $aud_array ) > 1 && ( empty( $payload->azp ) || ! in_array( $payload->azp, $aud_array ) ) ) {
 			throw new WP_Auth0_InvalidIdTokenException( __( 'Invalid token azp', 'wp-auth0' ) );
+		}
+
+		// Check the auth_time of the token.
+		if ( $max_age && ( empty( $payload->auth_time ) || time() >= ( $payload->auth_time + $max_age ) ) ) {
+			throw new WP_Auth0_InvalidIdTokenException( __( 'Invalid token auth_time', 'wp-auth0' ) );
 		}
 
 		// Check if the token nonce is valid.
