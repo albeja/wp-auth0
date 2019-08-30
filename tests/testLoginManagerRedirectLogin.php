@@ -95,9 +95,10 @@ class TestLoginManagerRedirectLogin extends WP_Auth0_Test_Case {
 		switch ( $response_type ) {
 			case 'success_exchange_code_valid_id_token':
 				$id_token_payload = [
-					'sub' => '__test_id_token_sub__',
-					'iss' => 'https://test.auth0.com/',
-					'aud' => '__test_client_id__',
+					'sub'   => '__test_id_token_sub__',
+					'iss'   => 'https://test.auth0.com/',
+					'aud'   => '__test_client_id__',
+					'nonce' => '__valid_nonce__',
 				];
 				$id_token         = JWT::encode( $id_token_payload, '__test_client_secret__' );
 				return [
@@ -245,7 +246,7 @@ class TestLoginManagerRedirectLogin extends WP_Auth0_Test_Case {
 			$http_data = [];
 			$this->login->redirect_login();
 		} catch ( Exception $e ) {
-			$http_data = unserialize( $e->getMessage() );
+			$http_data = maybe_unserialize( $e->getMessage() );
 		}
 
 		$this->assertNotEmpty( $http_data );
@@ -300,14 +301,18 @@ class TestLoginManagerRedirectLogin extends WP_Auth0_Test_Case {
 		self::$opts->set( 'client_id', '__test_client_id__' );
 		self::$opts->set( 'client_secret', '__test_client_secret__' );
 		self::$opts->set( 'client_signing_algorithm', 'HS256' );
-		$_REQUEST['code']  = uniqid();
-		$_REQUEST['state'] = base64_encode( '{}' );
+		$_REQUEST['code']       = uniqid();
+		$_REQUEST['state']      = base64_encode( '{}' );
+		$_COOKIE['auth0_nonce'] = '__valid_nonce__';
 
 		try {
 			$http_data = [];
-			$this->login->redirect_login();
+
+			// Suppress "Cannot modify header information" notice.
+			// phpcs:ignore
+			@$this->login->redirect_login();
 		} catch ( Exception $e ) {
-			$http_data = unserialize( $e->getMessage() );
+			$http_data = maybe_unserialize( $e->getMessage() );
 		}
 
 		$this->assertNotEmpty( $http_data );
@@ -331,14 +336,18 @@ class TestLoginManagerRedirectLogin extends WP_Auth0_Test_Case {
 		self::$opts->set( 'client_id', '__test_client_id__' );
 		self::$opts->set( 'client_secret', '__test_client_secret__' );
 		self::$opts->set( 'client_signing_algorithm', 'HS256' );
-		$_REQUEST['code']  = uniqid();
-		$_REQUEST['state'] = base64_encode( '{}' );
+		$_REQUEST['code']       = uniqid();
+		$_REQUEST['state']      = base64_encode( '{}' );
+		$_COOKIE['auth0_nonce'] = '__valid_nonce__';
 
 		try {
 			$user_data = [];
-			$this->login->redirect_login();
+
+			// Suppress "Cannot modify header information" notice.
+			// phpcs:ignore
+			@$this->login->redirect_login();
 		} catch ( Exception $e ) {
-			$user_data = unserialize( $e->getMessage() );
+			$user_data = maybe_unserialize( $e->getMessage() );
 		}
 
 		$this->assertTrue( $user_data['user'] instanceof WP_User );
@@ -365,14 +374,18 @@ class TestLoginManagerRedirectLogin extends WP_Auth0_Test_Case {
 		self::$opts->set( 'client_id', '__test_client_id__' );
 		self::$opts->set( 'client_secret', '__test_client_secret__' );
 		self::$opts->set( 'client_signing_algorithm', 'HS256' );
-		$_REQUEST['code']  = uniqid();
-		$_REQUEST['state'] = base64_encode( '{}' );
+		$_REQUEST['code']       = uniqid();
+		$_REQUEST['state']      = base64_encode( '{}' );
+		$_COOKIE['auth0_nonce'] = '__valid_nonce__';
 
 		try {
 			$user_data = [];
-			$this->login->redirect_login();
+
+			// Suppress "Cannot modify header information" notice.
+			// phpcs:ignore
+			@$this->login->redirect_login();
 		} catch ( Exception $e ) {
-			$user_data = unserialize( $e->getMessage() );
+			$user_data = maybe_unserialize( $e->getMessage() );
 		}
 
 		$this->assertEmpty( $user_data['user'] );
@@ -397,14 +410,18 @@ class TestLoginManagerRedirectLogin extends WP_Auth0_Test_Case {
 		self::$opts->set( 'client_secret', '__test_client_secret__' );
 		self::$opts->set( 'client_signing_algorithm', 'HS256' );
 		add_filter( 'auth0_use_management_api_for_userinfo', '__return_false', 10 );
-		$_REQUEST['code']  = uniqid();
-		$_REQUEST['state'] = base64_encode( '{}' );
+		$_REQUEST['code']       = uniqid();
+		$_REQUEST['state']      = base64_encode( '{}' );
+		$_COOKIE['auth0_nonce'] = '__valid_nonce__';
 
 		try {
 			$user_data = [];
-			$this->login->redirect_login();
+
+			// Suppress "Cannot modify header information" notice.
+			// phpcs:ignore
+			@$this->login->redirect_login();
 		} catch ( Exception $e ) {
-			$user_data = unserialize( $e->getMessage() );
+			$user_data = maybe_unserialize( $e->getMessage() );
 		}
 
 		$this->assertEquals( '__test_id_token_sub__', $user_data['userinfo']->user_id );

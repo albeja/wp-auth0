@@ -260,24 +260,19 @@ class TestIdTokenValidator extends WP_Auth0_Test_Case {
 		self::$opts->set( 'client_secret', '__test_valid_secret__' );
 		self::$opts->set( 'client_signing_algorithm', 'HS256' );
 		self::$opts->set( 'domain', 'valid.auth0.com' );
-		$_COOKIE['auth0_nonce'] = '__valid_nonce__';
 
 		$id_token_payload = [
-			'sub'   => uniqid(),
-			'iss'   => 'https://valid.auth0.com/',
-			'aud'   => [ '__valid_audience_1__', '__valid_audience_2__' ],
-			'nonce' => '__valid_nonce__',
-			'data'  => '__test_data__',
+			'sub'  => uniqid(),
+			'iss'  => 'https://valid.auth0.com/',
+			'aud'  => [ '__valid_audience_1__', '__valid_audience_2__' ],
+			'data' => '__test_data__',
 		];
 		$id_token         = JWT::encode( $id_token_payload, '__test_valid_secret__', 'HS256' );
 		$decoder          = new WP_Auth0_Id_Token_Validator( $id_token, self::$opts );
 
 		try {
 			$caught_redirect = false;
-
-			// Suppress "Cannot modify header information" notice.
-			// phpcs:ignore
-			@$decoder->decode( true );
+			$decoder->decode();
 		} catch ( WP_Auth0_InvalidIdTokenException $e ) {
 			$caught_redirect = ( 'Invalid token azp' === $e->getMessage() );
 		}
@@ -295,22 +290,95 @@ class TestIdTokenValidator extends WP_Auth0_Test_Case {
 		self::$opts->set( 'client_secret', '__test_valid_secret__' );
 		self::$opts->set( 'client_signing_algorithm', 'HS256' );
 		self::$opts->set( 'domain', 'valid.auth0.com' );
-		$_COOKIE['auth0_nonce'] = '__valid_nonce__';
 
 		$id_token_payload = [
-			'sub'   => uniqid(),
-			'iss'   => 'https://valid.auth0.com/',
-			'aud'   => [ '__valid_audience_1__', '__valid_audience_2__' ],
-			'nonce' => '__valid_nonce__',
-			'data'  => '__test_data__',
-			'azp'   => '__valid_audience_2__',
+			'sub'  => uniqid(),
+			'iss'  => 'https://valid.auth0.com/',
+			'aud'  => [ '__valid_audience_1__', '__valid_audience_2__' ],
+			'data' => '__test_data__',
+			'azp'  => '__valid_audience_2__',
 		];
 		$id_token         = JWT::encode( $id_token_payload, '__test_valid_secret__', 'HS256' );
 		$decoder          = new WP_Auth0_Id_Token_Validator( $id_token, self::$opts );
 
-		// Suppress "Cannot modify header information" notice.
-		// phpcs:ignore
-		$decoded_token = @$decoder->decode( true );
+		$decoded_token = $decoder->decode();
+		$this->assertEquals( '__test_data__', $decoded_token->data );
+	}
+
+	public function testThatTokenWithMissingAuthTimeFails() {
+		self::$opts->set( 'client_id', '__valid_audience_1__' );
+		self::$opts->set( 'client_secret', '__test_valid_secret__' );
+		self::$opts->set( 'client_signing_algorithm', 'HS256' );
+		self::$opts->set( 'domain', 'valid.auth0.com' );
+
+		$id_token_payload = [
+			'sub' => uniqid(),
+			'iss' => 'https://valid.auth0.com/',
+			'aud' => '__valid_audience_1__',
+		];
+
+		$id_token = JWT::encode( $id_token_payload, '__test_valid_secret__', 'HS256' );
+		$decoder  = new WP_Auth0_Id_Token_Validator( $id_token, self::$opts );
+
+		try {
+			$decoder->decode( false, 10 );
+			$error_msg = 'No exception caught';
+		} catch ( WP_Auth0_InvalidIdTokenException $e ) {
+			$error_msg = $e->getMessage();
+		}
+
+		$this->assertEquals( 'Invalid token auth_time', $error_msg );
+	}
+
+	public function testThatTokenWithExpiredAuthTimeFails() {
+		self::$opts->set( 'client_id', '__valid_audience_1__' );
+		self::$opts->set( 'client_secret', '__test_valid_secret__' );
+		self::$opts->set( 'client_signing_algorithm', 'HS256' );
+		self::$opts->set( 'domain', 'valid.auth0.com' );
+
+		$id_token_payload = [
+			'sub'       => uniqid(),
+			'iss'       => 'https://valid.auth0.com/',
+			'aud'       => '__valid_audience_1__',
+			'auth_time' => time() - 100,
+		];
+
+		$id_token = JWT::encode( $id_token_payload, '__test_valid_secret__', 'HS256' );
+		$decoder  = new WP_Auth0_Id_Token_Validator( $id_token, self::$opts );
+
+		try {
+			$decoder->decode( false, 10 );
+			$error_msg = 'No exception caught';
+		} catch ( WP_Auth0_InvalidIdTokenException $e ) {
+			$error_msg = $e->getMessage();
+		}
+
+		$this->assertEquals( 'Invalid token auth_time', $error_msg );
+	}
+
+	/**
+	 * Test that a token with a valid auth_time is successfully decoded.
+	 *
+	 * @throws WP_Auth0_InvalidIdTokenException - Should not be thrown in this test.
+	 */
+	public function testThatTokenWithValidAuthTimeSucceeds() {
+		self::$opts->set( 'client_id', '__valid_audience_1__' );
+		self::$opts->set( 'client_secret', '__test_valid_secret__' );
+		self::$opts->set( 'client_signing_algorithm', 'HS256' );
+		self::$opts->set( 'domain', 'valid.auth0.com' );
+
+		$id_token_payload = [
+			'sub'       => uniqid(),
+			'iss'       => 'https://valid.auth0.com/',
+			'aud'       => '__valid_audience_1__',
+			'data'      => '__test_data__',
+			'auth_time' => time() + 100,
+		];
+
+		$id_token = JWT::encode( $id_token_payload, '__test_valid_secret__', 'HS256' );
+		$decoder  = new WP_Auth0_Id_Token_Validator( $id_token, self::$opts );
+
+		$decoded_token = $decoder->decode( false, 10 );
 		$this->assertEquals( '__test_data__', $decoded_token->data );
 	}
 
