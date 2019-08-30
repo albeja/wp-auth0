@@ -20,8 +20,9 @@ class TestLoginManagerAuthParams extends WP_Auth0_Test_Case {
 		$this->assertEquals( '__test_client_id_1__', $auth_params['client_id'] );
 		$this->assertEquals( 'openid email profile', $auth_params['scope'] );
 		$this->assertEquals( 'code', $auth_params['response_type'] );
-		$this->assertEquals( 'query', $auth_params['response_mode'] );
 		$this->assertEquals( site_url( 'index.php?auth0=1' ), $auth_params['redirect_uri'] );
+		$this->assertEquals( WP_Auth0_Nonce_Handler::get_instance()->get_unique(), $auth_params['nonce'] );
+		$this->assertArrayNotHasKey( 'response_mode', $auth_params );
 		$this->assertArrayNotHasKey( 'auth0Client', $auth_params );
 
 		$decoded_state = json_decode( base64_decode( $auth_params['state'] ) );

@@ -237,7 +237,7 @@ class WP_Auth0_LoginManager {
 		// Decode the incoming ID token for the Auth0 user.
 		// TODO: Do this in $this->init_auth0()
 		$jwt_verifier  = new WP_Auth0_Id_Token_Validator( $id_token, $this->a0_options );
-		$decoded_token = $jwt_verifier->decode( false, $max_age );
+		$decoded_token = $jwt_verifier->decode( true, $max_age );
 
 		// Attempt to authenticate with the Management API, if allowed.
 		$userinfo = null;
@@ -578,18 +578,19 @@ class WP_Auth0_LoginManager {
 		$opts         = WP_Auth0_Options::Instance();
 		$lock_options = new WP_Auth0_Lock10_Options();
 		$is_implicit  = (bool) $opts->get( 'auth0_implicit_workflow', false );
-		$nonce        = WP_Auth0_Nonce_Handler::get_instance()->get_unique();
 
 		$params = [
 			'client_id'     => $opts->get( 'client_id' ),
 			'scope'         => self::get_userinfo_scope( 'authorize_url' ),
-			'response_type' => $is_implicit ? 'id_token' : 'code',
-			'response_mode' => $is_implicit ? 'form_post' : 'query',
-			'redirect_uri'  => $is_implicit ? $lock_options->get_implicit_callback_url() : $opts->get_wp_auth0_url(),
+			'nonce'         => WP_Auth0_Nonce_Handler::get_instance()->get_unique(),
+			'response_type' => 'code',
+			'redirect_uri'  => $opts->get_wp_auth0_url(),
 		];
 
 		if ( $is_implicit ) {
-			$params['nonce'] = WP_Auth0_Nonce_Handler::get_instance()->get_unique();
+			$params['response_type'] = 'id_token';
+			$params['response_mode'] = 'form_post';
+			$params['redirect_uri']  = $lock_options->get_implicit_callback_url();
 		}
 
 		if ( ! empty( $connection ) ) {
